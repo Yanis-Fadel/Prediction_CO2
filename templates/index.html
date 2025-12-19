@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoPredict AI | Analyse Avancée</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="main-wrapper">
+        <header class="app-header">
+            <div class="logo">
+                <i class="fas fa-leaf"></i> EcoPredict <span>AI</span>
+            </div>
+            <p class="subtitle">Analyse d'impact CO2 par Ensemble Learning</p>
+        </header>
+
+        <div class="content-container">
+            <form action="{{ url_for('predict') }}" method="post" class="prediction-form">
+                
+                <div class="form-section">
+                    <h3><i class="fas fa-car"></i> Identification & Moteur</h3>
+                    <div class="grid-3">
+                        <div class="input-group">
+                            <label>Marque</label>
+                            <select name="marque" required>
+                                <option value="" disabled selected>Choisir...</option>
+                                {% for m in marques %}
+                                <option value="{{ m }}">{{ m }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Carburant</label>
+                            <select name="carburant" id="carburant" required>
+                                <option value="" disabled selected>Énergie...</option>
+                                {% for code, label in carburants %}
+                                <option value="{{ code }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Transmission</label>
+                            <select name="transmission" required>
+                                <option value="" disabled selected>Type...</option>
+                                {% for trans in transmissions %}
+                                <option value="{{ trans }}">{{ trans }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Hybride ?</label>
+                            <select name="is_hybrid">
+                                <option value="non">Non</option>
+                                <option value="oui">Oui</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Cylindrée (L)</label>
+                            <input type="number" step="0.1" name="cylindree" placeholder="Ex: 2.0" required>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Nb Cylindres</label>
+                            <input type="number" name="cylinders" placeholder="Ex: 4" required>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Puissance Moteur (ch)</label>
+                            <input type="number" name="engine_power" placeholder="Ex: 150" required>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Puissance Fiscale (CV)</label>
+                            <input type="number" name="engine_fiscal" placeholder="Ex: 8" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3><i class="fas fa-weight-hanging"></i> Physique & Consommation</h3>
+                    <div class="grid-3">
+                        <div class="input-group">
+                            <label>Masse à vide Min (kg)</label>
+                            <input type="number" name="mass_min" placeholder="Ex: 1400" required>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Masse Max (kg)</label>
+                            <input type="number" name="mass_max" placeholder="Ex: 1900" required>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Âge (ans)</label>
+                            <input type="number" name="age" placeholder="Ex: 2" required>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Conso Urbaine (L/100km)</label>
+                            <input type="number" step="0.1" name="fuel_city" id="fuel_city" placeholder="Ex: 8.5" required>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Conso Autoroute (L/100km)</label>
+                            <input type="number" step="0.1" name="fuel_highway" id="fuel_highway" placeholder="Ex: 6.2" required>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-predict">
+                    Calculer l'Empreinte CO2 <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+
+            {% if final_prediction or error_msg %}
+            <div id="result" class="result-card {% if error_msg %}error{% endif %}">
+                {% if error_msg %}
+                    <h3>Erreur</h3>
+                    <p>{{ error_msg }}</p>
+                {% else %}
+                    <div class="context-badge">{{ context }}</div>
+                    <h3>Estimation CO2 (Moyenne)</h3>
+                    <div class="result-value">
+                        {{ final_prediction }} <small>g/km</small>
+                    </div>
+                    <div class="gauge-container">
+                        {% set percentage = (final_prediction / 400) * 100 %}
+                        <div class="gauge-bar" style="width: {{ percentage }}%; background: {% if final_prediction < 120 %}#00b894{% elif final_prediction < 180 %}#fdcb6e{% else %}#d63031{% endif %};"></div>
+                    </div>
+                    
+                    <div class="models-grid">
+                        <div class="model-card">
+                            <span class="model-name">Random Forest</span>
+                            <span class="model-val">{{ individual_predictions.get('Random Forest', '-') }}</span>
+                        </div>
+                        <div class="model-card">
+                            <span class="model-name">XGBoost</span>
+                            <span class="model-val">{{ individual_predictions.get('XGBoost', '-') }}</span>
+                        </div>
+                        <div class="model-card">
+                            <span class="model-name">MLP (Neural)</span>
+                            <span class="model-val">{{ individual_predictions.get('MLP (Neural Net)', '-') }}</span>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    
+    <script>
+        {% if scroll_to_result %}
+        document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+        {% endif %}
+
+        // Gestion automatique véhicules électriques et hybrides
+        const city = document.getElementById('fuel_city');
+        const hway = document.getElementById('fuel_highway');
+        const carburant = document.getElementById('carburant');
+        const hybride = document.querySelector('select[name="is_hybrid"]');
+
+        function updateFuelLogic() {
+            const isElectric = carburant.value === 'Electrique';
+            const isHybrid = hybride.value === 'oui';
+            
+            // Si électrique OU hybride, on met 0 en conso et on grise
+            if(isElectric || isHybrid) {
+                city.value = 0;
+                hway.value = 0;
+                city.disabled = true;
+                hway.disabled = true;
+            } else {
+                city.disabled = false;
+hway.disabled = false;
+            }
+        }
+        
+        carburant.addEventListener('change', updateFuelLogic);
+        hybride.addEventListener('change', updateFuelLogic);
+    </script>
+</body>
+</html>
